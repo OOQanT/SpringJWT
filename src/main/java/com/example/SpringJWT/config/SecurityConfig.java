@@ -2,7 +2,10 @@ package com.example.SpringJWT.config;
 
 import com.example.SpringJWT.jwt.JWTFilter;
 import com.example.SpringJWT.jwt.JWTUtil;
+import com.example.SpringJWT.jwt.JwtLogoutFilter;
 import com.example.SpringJWT.jwt.LoginFilter;
+import com.example.SpringJWT.service.LogoutService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +27,9 @@ public class SecurityConfig {
 
     // 5. 로그인 필터에서 사용할 토큰생성기를 주입 받음
     private final JWTUtil jwtUtil;
+
+    private final JwtLogoutFilter jwtLogoutFilter;
+    private final LogoutService logoutService;
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
         return new BCryptPasswordEncoder();
@@ -55,10 +61,19 @@ public class SecurityConfig {
 
 
         http
-                .addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
+                .addFilterBefore(new JWTFilter(jwtUtil,logoutService), LoginFilter.class);
 
         http
                 .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration),jwtUtil), UsernamePasswordAuthenticationFilter.class);
+
+        http
+                .logout((auth)-> auth
+                        .logoutUrl("/api/logout")
+                        .addLogoutHandler(jwtLogoutFilter)
+                        .logoutSuccessHandler(((request, response, authentication) -> {
+                            response.setStatus(HttpServletResponse.SC_OK);
+                        }))
+                );
 
         http
                 .sessionManagement((session) -> session

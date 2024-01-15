@@ -2,6 +2,7 @@ package com.example.SpringJWT.jwt;
 
 import com.example.SpringJWT.dto.CustomUserDetails;
 import com.example.SpringJWT.entity.UserEntity;
+import com.example.SpringJWT.service.LogoutService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import java.io.IOException;
 public class JWTFilter extends OncePerRequestFilter { // 요청에 대해 한 번만 작동하는 OncePerRequestFilter을 상속 받음
 
     private final JWTUtil jwtUtil;
+    private final LogoutService logoutService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -35,11 +37,17 @@ public class JWTFilter extends OncePerRequestFilter { // 요청에 대해 한 �
             return;
         }
 
-        log.info("authorization now");
-
 
         String token = authorization.split(" ")[1];
 
+        // 요청으로 온 토큰이 로그아웃 처리된 토큰이면 리턴
+        if(logoutService.isBlackListed(token)){
+            log.info("Blacklisted token detected: {}",token);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        log.info("authorization now");
         //토큰 소멸시간 검증
         if(jwtUtil.isExpired(token)){ // 토큰이 만료인 경우 다음 필터를 호출후 메서드 종료
             log.info("token expired");
